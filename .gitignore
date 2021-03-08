@@ -1,0 +1,11 @@
+/node_modules
+npm-debug.log
+.DS_Store
+baseMongoUser.rtf
+._baseMongoUser.rtf
+calendar.js
+credentials.json
+._credentials.json
+token2.json
+MeLExample.js
+templateClaimActions.js
