@@ -70,15 +70,30 @@ async function processCode(req, res) {
         console.log("Token:", strToken)
 
         const filter = { email: req.body.email };
-        const add = { token: calToken };
+        const add = { token: calToken, horarios: [{start: req.body.start, end: req.body.end}] };
 
         let update = await usersModel.findOneAndUpdate(filter, add)
 
         res.json(update)
     }
-
-
 }
 
-module.exports = { generateURL, processCode };
+
+async function insertCredentials(req, res, next) {
+    try{
+        const find = await tokenModel.findOne({ purpose: "calendarApiKey"}).exec() 
+        if (find !== null) return res.status(403).json('Credentials already installed. Modify them from the admin panel.'); 
+        const credentials = new tokenModel({
+            purpose: 'calendarApiKey',
+            installed: req.body.installed
+          });
+          let usr = await credentials.save();
+          return res.json(usr);
+    }catch (e){
+        console.log(e)
+        next(e) 
+    }
+}
+
+module.exports = { generateURL, processCode, insertCredentials };
 

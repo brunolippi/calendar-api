@@ -5,8 +5,8 @@ const jwt = require('jsonwebtoken')
 module.exports = {
   getAll: async (req, res, next) => {
     try{
-        const productos = await usersModel.find({}).populate("category");
-        res.json(productos);
+        const userData = await usersModel.find({}).populate("category");
+        res.json(userData);
     }catch (e){
         next(e)
     }
@@ -14,8 +14,9 @@ module.exports = {
   getById: async (req, res, next) => {
     console.log(req.params.id);
     try {
-        const productos = await usersModel.findById(req.params.id);
-        res.json(productos);
+        const userData = await usersModel.findById(req.params.id);
+        console.log(userData)
+        res.json(userData);
     }catch (e){
         next(e)
     }
@@ -25,14 +26,21 @@ module.exports = {
     try{
         const user = new usersModel({
             name: req.body.name,
+            surname: req.body.surname,
             email: req.body.email,
             password: req.body.password,
-            calendarId: req.body.cal,
+            calendarId: req.body.calendarId,
+            time: req.body.time,
             token: req.body.token,
-            credentials: req.body.cred
+            settings: req.body.settings,
           });
           let usr = await user.save();
-          res.json(usr);
+          res.json({
+            role: usr.role,
+            _id: usr._id,
+            email: usr.email,
+            calendarId: usr.calendarId,
+        });
     }catch (e){
         next(e)
     }
@@ -40,8 +48,9 @@ module.exports = {
   },
   update: async (req, res, next) => {
     try{
-        let producto = await usersModel.update({ _id: req.params.id }, req.body, { multi: false })
-        res.json(producto);
+        const userData = await usersModel.update({ _id: req.params.id }, { ...req.body
+        }, { multi: false })
+        return res.json({ status: "ok", ok: 1});
     }catch (e){
        next(e) 
     }
@@ -55,10 +64,10 @@ module.exports = {
                 res.json({token:token})
                 req.headers["x-access-token"] = token;
             }else {
-                res.json({error: "password incorrecta"})
+                res.json({error: "Wrong password."})
             }
         }else{
-            res.json({error: "no existe el mail"})
+            res.json({error: "Email not registered."})
         }
     }catch (e){
        next(e) 

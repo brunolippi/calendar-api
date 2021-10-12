@@ -1,54 +1,72 @@
 const mongoose = require("../bin/mongodb");
-var Schema = mongoose.Schema;
 
-var eventSchema = new Schema({
-  title: { type: String, required: 'Titulo de evento requerido' },
-  user: {
-    id: { type: String, required: true },
-    displayName: String
+const eventSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: [true, "Field 'title' is mandatory. Type: String."],
+    minlength: 1,
+    maxlength: 100
   },
-  dateAndTime: { type: Date, required: true },
-  endDateAndTime: { type: Date, required: true },
-  remarks: String
-});
-
-eventSchema.virtual('duration')
-  .get(function () {
-    var durationMs = this.endDateAndTime - this.dateAndTime;
-    if (durationMs) {
-      return Math.abs(this.endDateAndTime - this.dateAndTime) / 1000 / 60;
-    }
-    else {
-      return;
-    }
-  });
-
-eventSchema.path('dateAndTime').validate({
-  validator: function (value) {
-    var self = this;
-    return new Promise(function(resolve, reject) {
-      mongoose.models.Appointment.find( { 
-        '_id': { $ne: self._id },
-        'user.id': self.user.id,
-        $or: [ 
-          { dateAndTime: { $lt: self.endDateAndTime, $gte: self.dateAndTime } }, 
-          { endDateAndTime: { $lte: self.endDateAndTime, $gt: self.dateAndTime } }
-        ] 
-      }, function (err, appointments) {
-        resolve(! appointments || appointments.length === 0);
-      });  
-    })
+  owner: {
+    type: ObjectId,
+    required: [true, "Field 'owner' is mandatory. Type: ObjectId."],
   },
-  message: "Este evento se superpone con otros"
-});
+  calendarId: {
+    type: String,
+    //required:[true,"Field 'calendarId' is mandatory. Type: String."]
+  },
+  available: {
+      type: Boolean,
+      default: true
+  },
+  platform: String,
+  dateOfCreation: { type: Date, default: Date.now },
+  duration: {
+    type: Number,
+    required: [true, "Field 'duration' is mandatory. Type: Number."],
+  },
+  date: {
+    start: {
+      type: Date,
+      required: [true, "Field 'date.start' is mandatory. Type: Date."]
+    },
+    end: {
+      type: Date,
+    },
+  },
+  questions: [{ 
+    question: String, 
+    answers: Array, 
+    type: String, 
+    obligatory: Boolean 
+  }],
+})
 
-eventSchema.path('dateAndTime').validate(function (value) {
-  var isValid = true;
+// eventSchema.path('dateAndTime').validate({
+//   validator: function (value) {
+//     var self = this;
+//     return new Promise(function (resolve, reject) {
+//       mongoose.models.Appointment.find({
+//         '_id': { $ne: self._id },
+//         'user.id': self.user.id,
+//         $or: [
+//           { dateAndTime: { $lt: self.endDateAndTime, $gte: self.dateAndTime } },
+//           { endDateAndTime: { $lte: self.endDateAndTime, $gt: self.dateAndTime } }
+//         ]
+//       }, function (err, appointments) {
+//         resolve(!appointments || appointments.length === 0);
+//       });
+//     })
+//   },
+//   message: "Este evento se superpone con otros"
+// });
+
+
+eventSchema.path('date.start').validate(function (value) {
   if (value < new Date()) {
-    isValid = false;
-  }
-  return isValid;
-}, "El evento no puede ser en pasado");
+    return false;
+  } else return true;
+}, "Event can't be in the past.");
 
 
-module.exports = mongoose.model('Appointment', eventSchema);
+module.exports = mongoose.model('events', eventSchema);

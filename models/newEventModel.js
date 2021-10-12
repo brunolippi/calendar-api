@@ -1,8 +1,8 @@
-const fs = require("fs");
-const readline = require("readline");
 const { google } = require("googleapis")
 const moment = require('moment'); // http://momentjs.com/docs/
 const usersModel = require("../models/usersModel");
+const reservationModel = require("./reservationModel");
+const tokenModel = require("./tokenModel");
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ["https://www.googleapis.com/auth/calendar"];
@@ -10,30 +10,17 @@ const SCOPES = ["https://www.googleapis.com/auth/calendar"];
 // created automatically when the authorization flow completes for the first
 // time.
 
-const TOKEN_PATH = "token.json";
-
-// !! !! SI NO HAY TOKEN, CRASHEA !! !!
-
-// el token lo obtiene de la db
-
-
 async function addEvent(res,req) {
   try{
-    const user = await usersModel.findOne({calendarId: req.body.email})
-    const { client_secret, client_id, redirect_uris } = user.credentials[0].installed;
+    const user = await usersModel.findOne({email: req.body.email})
+    const credentials = await tokenModel.findOne({purpose: 'calendarApiKey'})
+    const { client_secret, client_id, redirect_uris } = credentials.installed;
     const oAuth2Client = new google.auth.OAuth2(
       client_id,
       client_secret,
       redirect_uris[0])
     oAuth2Client.setCredentials(user.token[0]);
 
-    
-    
-    // Check if we have previously stored a token.
-    /* fs.readFile(TOKEN_PATH, (err, token) => {
-      if (err) return getAccessToken(oAuth2Client, callback);
-      //oAuth2Client.setCredentials(JSON.parse(token)); 
-      */
      validateTime(oAuth2Client, res, req);
      
     }catch{
@@ -65,18 +52,13 @@ async function validateTime(auth, res, req) {
   calendar.freebusy.query(parameters, function (err, response) {
     if (err) {
       console.log("There was an error contacting the Calendar service: " + err);
-      return err;
+      return res.status(500).json({created: false, error: err});
     }
-    console.log(
-      "Response from the Calendar service: " +
-        JSON.stringify(response.data.calendars[userData.calendarId].busy)
-    );
     let eventsBooked = response.data.calendars[userData.calendarId].busy
     if (eventsBooked.length === 0) {
-      console.log("No upcoming events found.");
       add(auth, res, req, userData)
     } else {
-      res.json('Horario ocupado')
+      return res.status(409).json({created: false, error: 'occupied'});
     } 
   });
 }
@@ -87,9 +69,9 @@ function add(auth, res, req, data) {
     .toString(36)
     .replace(/[^a-z]+/g, "")
     .substr(0, 50);
-  console.log(randomNu);
+    
   var event = {
-    summary: req.body.titulo,
+    summary: req.body.title,
     description: req.body.desc,
     start: {
       dateTime: req.body.start,
@@ -99,7 +81,7 @@ function add(auth, res, req, data) {
       dateTime: req.body.end,
       timeZone: "America/Buenos_Aires"
   },
-    attendees: req.body.invs,
+    attendees: req.body.attendees,
     colorId: req.body.colordId,
     conferenceData: {
       createRequest: {
@@ -118,7 +100,48 @@ function add(auth, res, req, data) {
     },
   };
 
+  async function createReservationLog () {
+    try {
+      const user = new reservationModel({
+      title: req.body.title,
+      owner: req.body.owner,
+      attendees: req.body.attendees,
+      calendarId: req.body.calendarId,
+      eventId: req.params.eventId,
+      time: {
+        start: req.body.start,
+        end: req.body.end
+      },
+      questions: req.body.questions
+    });
+    let usr = await user.save();
+    return usr;
+  } catch (err) {
+    return res.status(409).json(err)
+  }
+  }
+
   const calendar = google.calendar({ version: "v3", auth });
+  async function callbackEvent (err, newEvent) {
+    if (err) {
+      console.log(
+        "There was an error contacting the Calendar service: " + err
+      );
+      return res.status(500).json({created: false, error: err});
+    } else {
+      const eventLink = await newEvent.data.htmlLink
+      const meet = await newEvent.data.hangoutLink;
+      if (newEvent.data.status === 'confirmed') {
+        try {
+          await createReservationLog()
+          return res.json({created: true, meet, eventLink, event: newEvent.data})
+        }catch (err) {
+          return res.status(409).json(err)
+      }
+      };
+      return res.status(409).json({created: false, error: 'not-confirmed'});
+    }
+  }
   calendar.events.insert(
     {
       auth: auth,
@@ -127,23 +150,7 @@ function add(auth, res, req, data) {
       resource: event,
       sendNotifications: true
     },
-    function (err, newEvent) {
-      if (err) {
-        console.log(
-          "There was an error contacting the Calendar service: " + err
-        );
-        res.json("err: " + err);
-        var statusMeet = event.meetStatus;
-        console.log(statusMeet);
-        return;
-      } else {
-        console.log("Event created: %s", newEvent.htmlLink);
-        var statusMeet = event.meetStatus;
-        console.log(statusMeet);
-        res.json("Evento creado");
-        return;
-      }
-    }
+    callbackEvent
   );
 }
 

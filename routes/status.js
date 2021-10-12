@@ -2,12 +2,10 @@ var express = require('express');
 var router = express.Router();
 
 const status = (req, res) => {
-    setTimeout(() => {
-        res.json('Up')
-    }, 1500)
+    res.json('Running')
 }
 /* GET status page. */
-router.post('/', status);
+router.get('/', status);
 
 
 module.exports = router;

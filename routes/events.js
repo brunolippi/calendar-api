@@ -1,10 +1,11 @@
 var express = require('express');
 var router = express.Router();
-const eventController = require('../controllers/eventNewController')
+const meetController = require('../controllers/meetingNewController')
 const available = require('../controllers/availableController')
 
 /* GET home page. */
-router.post('/new', (req,res,next) => {req.app.validateUser(req,res,next)}, eventController.create);
-router.post('/available/', available.validateTime);
+router.post('/:eventId/new', (req,res,next) => {req.app.validateUser(req,res,next)}, meetController.create);
+router.post('/available/', available.validateTime)
+router.post('/available/date', available.validateDays);
 
 module.exports = router;
