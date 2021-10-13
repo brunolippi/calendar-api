@@ -1,4 +1,5 @@
 const mongoose = require("../bin/mongodb");
+const ObjectId = require('mongodb').ObjectID;
 
 const eventSchema = new mongoose.Schema({
   title: {
@@ -7,6 +8,7 @@ const eventSchema = new mongoose.Schema({
     minlength: 1,
     maxlength: 100
   },
+  description: String,
   owner: {
     type: ObjectId,
     required: [true, "Field 'owner' is mandatory. Type: ObjectId."],
@@ -20,7 +22,7 @@ const eventSchema = new mongoose.Schema({
       default: true
   },
   platform: String,
-  dateOfCreation: { type: Date, default: Date.now },
+  dateOfCreation: { type: Date, default: Date.now, inmutable: true },
   duration: {
     type: Number,
     required: [true, "Field 'duration' is mandatory. Type: Number."],
@@ -33,6 +35,11 @@ const eventSchema = new mongoose.Schema({
     end: {
       type: Date,
     },
+  },
+  createdBy: {
+    type: ObjectId,
+    required: [true, "Field 'createdBy' is mandatory. Token might be missing."],
+    inmutable: true
   },
   questions: [{ 
     question: String, 

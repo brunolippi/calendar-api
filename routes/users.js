@@ -9,6 +9,7 @@ router.post('/token'/*, (req,res,next) => {req.app.validateUser(req,res,next)}*/
 
 router.post('/login', usersController.login);
 router.post('/signup', usersController.create);
+router.put('/password', (req,res,next) => {req.app.validateUser(req,res,next)}, usersController.changePassword);
 
 router.get('/all', (req,res,next) => {req.app.validateUser(req,res,next)}, usersController.getAll);
 router.get('/:id', (req,res,next) => {req.app.validateUser(req,res,next)}, usersController.getById);

@@ -2,9 +2,9 @@ const mongoose = require("../bin/mongodb");
 const bcrypt = require('bcrypt')
 
 const userSchema = new mongoose.Schema({
-    name:{
+    firstname:{
         type:String,
-        required:[true,"Field 'name' is mandatory. Type: String."],
+        required:[true,"Field 'firstname' is mandatory. Type: String."],
         minlength:1,
         maxlength:100
     },
@@ -58,12 +58,26 @@ const userSchema = new mongoose.Schema({
     settings: Object,
 })
 
+userSchema.virtual('fullname').
+  get(function() { return `${this.firstname} ${this.surname}`; }).
+  set(function(v) {
+    const firstName = v.substring(0, v.indexOf(' '));
+    const lastName = v.substring(v.indexOf(' ') + 1);
+    this.set({ firstName, lastName });
+  });
+
+
 userSchema.pre("save", function(next){
     this.password = bcrypt.hashSync(this.password,10)
     next()
 })
 
 userSchema.pre("update", function(next){
+    this.password = bcrypt.hashSync(this.password,10)
+    next()
+})
+
+userSchema.pre("validate", function(next){
     this.password = bcrypt.hashSync(this.password,10)
     next()
 })

@@ -9,9 +9,10 @@ const usersModel = require("./models/usersModel");
 var cors = require('cors');
 
 var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
 var eventsRouter = require('./routes/events');
+var reservationsRouter = require('./routes/reservations');
 var statusRouter = require('./routes/status');
+var usersRouter = require('./routes/users');
 
 var app = express();
 
@@ -44,10 +45,11 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
-app.use('/users', usersRouter);
 app.use('/events', eventsRouter);
 app.use('/event', eventsRouter);
+app.use('/reservations', reservationsRouter);
 app.use('/status', statusRouter);
+app.use('/users', usersRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -57,9 +59,10 @@ app.use(function(req, res, next) {
 function validateUser (req,res,next){
   jwt.verify(req.headers["x-access-token"],req.app.get("secretKey"),function(err,decoded){
     if(err){
-      res.json({message:err.message})
+      res.status(403).json({message:err.message})
     }else{
-      req.body.tokenData=decoded
+      req.body.tokenData = decoded
+      req.user = decoded
       next()
     }
   })
@@ -67,12 +70,12 @@ function validateUser (req,res,next){
 
 app.validateUser = validateUser;
 
-async function validateAdminRole (email) {
-  if(email){
-  const dataUser = await usersModel.findOne({ email })
-  const role = dataUser.role
-  if (role === 'admin') return true
-  return false;
+async function validateAdminRole (userId) {
+  if(userId){
+    const dataUser = await usersModel.findOne({ _id: userId })
+    const role = dataUser.role
+    if (role === 'admin') return true
+    else return false;
 } else return false
 };
 
@@ -86,7 +89,7 @@ async function validateAdmin (req,res,next){
         req.body.tokenData=decoded
         next()
       }
-  })} else return res.status(401).json({message: 'User is not admin or "email" field is missing.'})
+  })} else return res.status(401).json({message: 'User is not admin or is not signed in.'})
 };
 
 app.validateAdmin = validateAdmin;
@@ -106,7 +109,7 @@ app.use(function(err, req, res, next) {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
-  
+
   // render the error page in JSON
   if(err.code === 11000) return res.status(409).json({ "error": err.message});
   res.status(err.status || 500);

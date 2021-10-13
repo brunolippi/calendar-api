@@ -16,13 +16,8 @@ code: code, email (token applicant)
 
 async function generateURL(req, res, next) {
     try{
-        console.log("trying")
         var keys;
         const find = await tokenModel.findOne({ purpose: "calendarApiKey"}).exec() 
-        console.log("tried")
-
-        // Por algún motivo, al obtener el doc correctamente, despues no puede encontrar la seccion installed donde estan todos los tokens
-        // Devuelve undefinded
         
         const { client_secret, client_id, redirect_uris } = find.installed;
         const oAuth2Client = new google.auth.OAuth2(

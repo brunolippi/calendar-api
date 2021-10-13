@@ -1,38 +1,46 @@
-const usersModel = require("../models/usersModel");
-const bcrypt = require('bcrypt')
-const jwt = require('jsonwebtoken')
+const eventModel = require("../models/eventModel");
 
 module.exports = {
   getAll: async (req, res, next) => {
     try{
-        const userData = await usersModel.find({}).populate("category");
-        res.json(userData);
+        const eventData = await eventModel.find({ available: true });
+        res.json(eventData);
+    }catch (e){
+        next(e)
+    }
+  },
+  getAllFuture: async (req, res, next) => {
+    try{
+        const eventData = await eventModel.find({ date: {start: {$gte: new Date()}} });
+        res.json(eventData);
     }catch (e){
         next(e)
     }
   },
   getById: async (req, res, next) => {
-    console.log(req.params.id);
     try {
-        const userData = await usersModel.findById(req.params.id);
-        res.json(userData);
+        const eventData = await eventModel.findById(req.params.id);
+        res.json(eventData);
     }catch (e){
         next(e)
     }
   },
   create: async (req, res, next) => {
-    console.log(req.body);
     try{
-        const user = new usersModel({
-            name: req.body.name,
-            email: req.body.email,
-            password: req.body.password,
-            calendarId: req.body.cal,
-            token: req.body.token,
-            credentials: req.body.cred
+        const event = new eventModel({
+            title: req.body.title,
+            description: req.body.description,
+            owner: req.body.owner,
+            available: req.body.available,
+            calendarId: req.body.calendarId,
+            platform: req.body.platform,
+            duration: req.body.duration,
+            date: req.body.date,
+            questions: req.body.questions,
+            createdBy: req.body.tokenData.userId
           });
-          let usr = await user.save();
-          res.json(usr);
+          let evnt = await event.save();
+          res.json(evnt);
     }catch (e){
         next(e)
     }
@@ -40,26 +48,8 @@ module.exports = {
   },
   update: async (req, res, next) => {
     try{
-        const userData = await usersModel.update({ _id: req.params.id }, req.body, { multi: false })
-        res.json(userData);
-    }catch (e){
-       next(e) 
-    }
-  },
-  login: async (req, res, next) => {
-    try{
-        const user = await usersModel.findOne({email:req.body.email})
-        if(user) {
-            if(bcrypt.compareSync(req.body.password,user.password)){
-                const token = jwt.sign({userId:user._id},req.app.get(("secretKey")))
-                res.json({token:token})
-                req.headers["x-access-token"] = token;
-            }else {
-                res.json({error: "Wrong password."})
-            }
-        }else{
-            res.json({error: "Email not registered."})
-        }
+        const eventData = await eventModel.update({ _id: req.params.id }, req.body, { multi: false })
+        res.json(eventData);
     }catch (e){
        next(e) 
     }

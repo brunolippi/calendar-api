@@ -1,8 +1,8 @@
 const { google } = require("googleapis")
 const moment = require('moment'); // http://momentjs.com/docs/
 const usersModel = require("../models/usersModel");
-const reservationModel = require("./reservationModel");
-const tokenModel = require("./tokenModel");
+const reservationModel = require("../models/reservationModel");
+const tokenModel = require("../models/tokenModel");
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ["https://www.googleapis.com/auth/calendar"];

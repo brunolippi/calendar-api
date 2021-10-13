@@ -144,26 +144,16 @@ function date(req, res, hours, events) {
   let slotTime = moment(reqDay).hours(hours.start)
   let endTime = moment(reqDay).hours(hours.end)
 
-  function isOccupied(slotT, breaks) {
-    const slot = moment(slotT);
-    if (breaks === undefined) {
+  function isOccupied(slot, breakTimes) {
+    if (breakTimes === undefined) {
       return false
-    } else {
-      return breaks.some((br) => {
-        console.log(br[0], br[1])
-        console.log(!(moment(br[0])
-        .isBetween(slot, slot.add(x.nextSlot, 'minutes'))))
-        console.log((moment(br[0])
-        .isBetween(slot, slot.add(x.nextSlot, 'minutes'))))
-        return !(moment(br[0])
-        .isBetween(slot, slot.add(x.nextSlot, 'minutes')))
-        && slot >= moment(br[0]) 
-        && !(moment(br[1])
-        .isBetween(slot, slot.add(x.nextSlot, 'minutes'))) 
-        && slot.add(x.nextSlot, 'minutes') <= moment(br[1]);
+    }else{
+      return breakTimes.some((br) => {
+        return slot >= moment(br[0]) && slot < moment(br[1]);
       });
     }
   }
+
 
   while (slotTime < endTime) {
     if (!isOccupied(slotTime, events)) {
