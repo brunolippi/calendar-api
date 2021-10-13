@@ -3,16 +3,12 @@ const moment = require('moment'); // http://momentjs.com/docs/
 const usersModel = require("../models/usersModel");
 const reservationModel = require("../models/reservationModel");
 const tokenModel = require("../models/tokenModel");
+const eventModel = require("../models/eventModel");
 
-// If modifying these scopes, delete token.json.
-const SCOPES = ["https://www.googleapis.com/auth/calendar"];
-// The file token.json stores the user's access and refresh tokens, and is
-// created automatically when the authorization flow completes for the first
-// time.
-
-async function addEvent(res,req) {
+async function initReservation(res,req) {
   try{
-    const user = await usersModel.findOne({email: req.body.email})
+    const user = await usersModel.findById(req.body.owner).select('+token')
+    console.log(user)
     const credentials = await tokenModel.findOne({purpose: 'calendarApiKey'})
     const { client_secret, client_id, redirect_uris } = credentials.installed;
     const oAuth2Client = new google.auth.OAuth2(
@@ -21,19 +17,16 @@ async function addEvent(res,req) {
       redirect_uris[0])
     oAuth2Client.setCredentials(user.token[0]);
 
-     validateTime(oAuth2Client, res, req);
+     verifySlot(oAuth2Client, res, req);
      
     }catch{
       res.json("ERRUser")
     }
 }
 
-async function validateTime(auth, res, req) {
+async function verifySlot(auth, res, req) {
   const calendar = google.calendar({ version: "v3", auth });
-
-
-  const userData = await usersModel.findOne({calendarId: req.body.email})
-  
+ 
   const startTime = JSON.stringify(req.body.start);
   const endTime = JSON.stringify(req.body.end);
     
@@ -45,7 +38,7 @@ async function validateTime(auth, res, req) {
     resource: {
       timeMin: opening,
       timeMax: closing,
-      items: [{ id: userData.calendarId }],
+      items: [{ id: req.body.calendarId }],
     },
   };
 
@@ -54,35 +47,42 @@ async function validateTime(auth, res, req) {
       console.log("There was an error contacting the Calendar service: " + err);
       return res.status(500).json({created: false, error: err});
     }
-    let eventsBooked = response.data.calendars[userData.calendarId].busy
+    let eventsBooked = response.data.calendars[req.body.calendarId].busy
     if (eventsBooked.length === 0) {
-      add(auth, res, req, userData)
+      addReservation(auth, res, req)
     } else {
       return res.status(409).json({created: false, error: 'occupied'});
     } 
   });
 }
 
-function add(auth, res, req, data) {
+async function addReservation(auth, res, req) {
 
-  var randomNu = Math.random()
+  const eventData = await eventModel.findById(req.params.eventId)
+
+  let randomNu = Math.random()
     .toString(36)
     .replace(/[^a-z]+/g, "")
     .substr(0, 50);
+
+  const description = req.body.questions ? `<h2>${eventData.title}</h2>${eventData.description}
+
+<hr><ul>${req.body.questions.map(e => `<li><b>${e.question}</b> ${e.answer}</li>`).join('')}</ul>` 
+  : eventData.description
     
-  var event = {
-    summary: req.body.title,
-    description: req.body.desc,
+  const event = {
+    summary: eventData.title,
+    description,
     start: {
       dateTime: req.body.start,
-      timeZone: "America/Buenos_Aires"
+      timeZone: req.body.timeZone
   },
     end: {
       dateTime: req.body.end,
-      timeZone: "America/Buenos_Aires"
+      timeZone: req.body.timeZone
   },
     attendees: req.body.attendees,
-    colorId: req.body.colordId,
+    colorId: eventData.colordId || null,
     conferenceData: {
       createRequest: {
         requestId: randomNu,
@@ -92,10 +92,7 @@ function add(auth, res, req, data) {
       },
       reminders: {
         useDefault: false,
-        overrides: [
-          { method: "email", minutes: 1440 },
-          { method: "popup", minutes: 10 },
-        ],
+        overrides: eventData.reminders,
       },
     },
   };
@@ -103,7 +100,7 @@ function add(auth, res, req, data) {
   async function createReservationLog () {
     try {
       const user = new reservationModel({
-      title: req.body.title,
+      title: eventData.title,
       owner: req.body.owner,
       attendees: req.body.attendees,
       calendarId: req.body.calendarId,
@@ -117,11 +114,12 @@ function add(auth, res, req, data) {
     let usr = await user.save();
     return usr;
   } catch (err) {
-    return res.status(409).json(err)
-  }
+      return res.status(409).json(err)
+    }
   }
 
   const calendar = google.calendar({ version: "v3", auth });
+
   async function callbackEvent (err, newEvent) {
     if (err) {
       console.log(
@@ -142,16 +140,14 @@ function add(auth, res, req, data) {
       return res.status(409).json({created: false, error: 'not-confirmed'});
     }
   }
-  calendar.events.insert(
-    {
-      auth: auth,
-      calendarId: data.calendarId,
+  calendar.events.insert({
+      auth,
+      calendarId: req.body.calendarId,
       conferenceDataVersion: 1,
       resource: event,
       sendNotifications: true
-    },
-    callbackEvent
+    }, callbackEvent
   );
 }
 
-module.exports = { addEvent };
+module.exports = { initReservation };

@@ -29,7 +29,7 @@ module.exports ={
     },
     create: (req,res,next) => {
         try {
-            const event =  newReservation.addEvent(res, req)
+            return newReservation.initReservation(res, req)
         }catch (e){
             console.log(e)
         }

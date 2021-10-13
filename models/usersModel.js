@@ -17,7 +17,7 @@ const userSchema = new mongoose.Schema({
     email:{
         type:String,
         unique:true,
-        required:[true,"Field 'mail' is mandatory. Type: String."],
+        required:[true,"Field 'email' is mandatory. Type: String."],
         validate: /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/g,
     },
     password:{
@@ -32,7 +32,7 @@ const userSchema = new mongoose.Schema({
     token:{
         type: Array,
         select: false,
-        required:[true,"Field 'token' is mandatory. Type: Array."]
+        required:[false,"Field 'token' is mandatory. Type: Array."]
     },  
     dateOfCreation: { type: Date, default: Date.now, inmutable: true },
     role: {

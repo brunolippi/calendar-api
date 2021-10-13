@@ -22,6 +22,7 @@ const eventSchema = new mongoose.Schema({
       default: true
   },
   platform: String,
+  address: String,
   dateOfCreation: { type: Date, default: Date.now, inmutable: true },
   duration: {
     type: Number,
@@ -36,6 +37,7 @@ const eventSchema = new mongoose.Schema({
       type: Date,
     },
   },
+  colorId: String,
   createdBy: {
     type: ObjectId,
     required: [true, "Field 'createdBy' is mandatory. Token might be missing."],
@@ -47,6 +49,13 @@ const eventSchema = new mongoose.Schema({
     type: String, 
     obligatory: Boolean 
   }],
+  reminders: {
+      type: Array,
+      default: [
+        { method: "email", minutes: 1440 },
+        { method: "popup", minutes: 10 }
+      ]
+  },
 })
 
 // eventSchema.path('dateAndTime').validate({
