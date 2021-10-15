@@ -11,6 +11,7 @@ const eventSchema = new mongoose.Schema({
   description: String,
   owner: {
     type: ObjectId,
+    ref: 'users',
     required: [true, "Field 'owner' is mandatory. Type: ObjectId."],
   },
   calendarId: {
@@ -40,6 +41,7 @@ const eventSchema = new mongoose.Schema({
   colorId: String,
   createdBy: {
     type: ObjectId,
+    ref: 'users',
     required: [true, "Field 'createdBy' is mandatory. Token might be missing."],
     inmutable: true
   },

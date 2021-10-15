@@ -44,7 +44,6 @@ module.exports = {
     }catch (e){
         next(e)
     }
-    
   },
   update: async (req, res, next) => {
     try{

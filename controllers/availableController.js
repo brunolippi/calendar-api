@@ -1,22 +1,21 @@
-var Moment = require('moment'); // http://momentjs.com/docs/
 var moment = require('moment-timezone');
-var _ = require('lodash'); // https://lodash.com/docs
 const { google } = require("googleapis");
-const usersModel = require("../models/usersModel");
 const tokenModel = require("../models/tokenModel");
+const eventModel = require('../models/eventModel');
 
 let occupied = [];
 
 async function validateTime(req, res) {
   try {
-    // In the future insted of retrieving this data from user, will request it from event.
-    const dataUser = await usersModel.findOne({ calendarId: req.body.calendarId })
-    let hours = dataUser.horarios[0]
+    const dataEvent = await eventModel.findById(req.params.eventId).populate('owner')
+    
+    const dataUser = dataEvent.owner
+    const hours = dataEvent.owner.time
 
     const reqDay = JSON.stringify(req.body.time);
 
-    var opening = moment(reqDay, moment.defaultFormat).add(0, 'days').hours(hours.start).minute(0).second(0);
-    var closing = moment(reqDay, moment.defaultFormat).add(0, 'days').hours(hours.end).minute(0).second(0);
+    const opening = moment(reqDay, moment.defaultFormat).add(0, 'days').hours(hours.start).minute(0).second(0);
+    const closing = moment(reqDay, moment.defaultFormat).add(0, 'days').hours(hours.end).minute(0).second(0);
 
     const credentials = await tokenModel.findOne({ purpose: "calendarApiKey" })
     const { client_secret, client_id, redirect_uris } = credentials.installed;
@@ -35,7 +34,7 @@ async function validateTime(req, res) {
       resource: {
         timeMin: opening,
         timeMax: closing,
-        items: [{ id: dataUser.calendarId }],
+        items: [{ id: dataEvent.calendarId }],
       },
     };
 
@@ -44,33 +43,32 @@ async function validateTime(req, res) {
         console.log("There was an error contacting the Calendar service: " + err);
         return err;
       }
-      console.log(response.data.calendars[[Object.keys(response.data.calendars)[0]]])
-      let resp = response.data.calendars[dataUser.calendarId || Object.keys(response.data.calendars)[0]].busy
-      let eventsBooked = JSON.stringify(resp)
+      let resp = response.data.calendars[dataEvent.calendarId || Object.keys(response.data.calendars)[0]].busy
       if (resp.length === 0) {
-        console.log("No upcoming events found.");
         return date(req, res, hours);
       } else {
-        for (var i = 0; i < resp.length; i++) {
-          var eventstart = moment(resp[i].start)
-          var eventend = moment(resp[i].end)
-          var event = [eventstart, eventend]
+        for (let i = 0; i < resp.length; i++) {
+          let eventstart = moment(resp[i].start)
+          let eventend = moment(resp[i].end)
+          let event = [eventstart, eventend]
           occupied.push(event)
         }
       }
-      console.log("occupied: ", occupied)
       return date(req, res, hours, occupied);
     });
   } catch (e) {
     console.log('Usuario no existente: ' + req.body.email, "Error:", e)
-    return res.json('ERRUsuario');
+    return res.status(409).json('ERRUsuario');
   }
 }
 
 async function validateDays(req, res) {
   try {
-    const dataUser = await usersModel.findOne({ calendarId: req.body.calendarId })
-    let hours = dataUser.horarios[0]
+    const dataEvent = await eventModel.findById(req.params.eventId).populate('owner')
+    
+    const dataUser = dataEvent.owner
+    const hours = dataEvent.owner.time
+
 
     const reqStartDay = JSON.stringify(req.body.time.start);
     const reqEndDay = JSON.stringify(req.body.time.end);
@@ -95,7 +93,7 @@ async function validateDays(req, res) {
       resource: {
         timeMin: opening,
         timeMax: closing,
-        items: [{ id: dataUser.calendarId }],
+        items: [{ id: dataEvent.calendarId }],
       },
     };
 
@@ -104,21 +102,8 @@ async function validateDays(req, res) {
         console.log("There was an error contacting the Calendar service: " + err);
         return err;
       }
-      let resp = response.data.calendars[dataUser.calendarId || Object.keys(response.data.calendars)[0]].busy
-      console.log("Response: ", resp)
-      let eventsBooked = JSON.stringify(resp)
-      res.json(resp)
-      // if (resp.length === 0) {
-      //   return date(req, res, hours)
-      // } else {
-      //   for (var i = 0; i < resp.length; i++) {
-      //     var eventstart = moment(resp[i].start)
-      //     var eventend = moment(resp[i].end)
-      //     var event = [eventstart, eventend]
-      //     occupied.push(event)
-      //   }
-      // }
-      // return date(req, res, hours, occupied)
+      let resp = response.data.calendars[dataEvent.calendarId || Object.keys(response.data.calendars)[0]].busy
+      return res.json(resp)
     });
   } catch (e) {
     console.log('Usuario no existente: ' + req.body.email, "Error:", e)
@@ -127,20 +112,9 @@ async function validateDays(req, res) {
 }
 
 function date(req, res, hours, events) {
-
   let slots = [];
 
   let reqDay = req.body.time;
-
-  let x = {
-    nextSlot: hours.window,
-    breakTime: [
-      ['11:00', '14:00'], ['16:00', '18:00']
-    ],
-    startTime: hours.start,
-    endTime: hours.end
-  };
-
   let slotTime = moment(reqDay).hours(hours.start)
   let endTime = moment(reqDay).hours(hours.end)
 
@@ -154,15 +128,14 @@ function date(req, res, hours, events) {
     }
   }
 
-
   while (slotTime < endTime) {
     if (!isOccupied(slotTime, events)) {
-      console.log(slotTime)
       slots.push(moment(slotTime).format("HH:mm"));
     }
-    slotTime = slotTime.add(x.nextSlot, 'minutes');
+    slotTime = slotTime.add(hours.window, 'minutes');
   }
-  occupied.length = 0; // Without it, the array would keep the previous occupied slots and accumulate 'em.
+  events.length = 0; // Without it, the array would keep the previous occupied slots and accumulate 'em.
+  
   return res.json(slots);
 }
 

@@ -31,7 +31,6 @@ const userSchema = new mongoose.Schema({
     },
     token:{
         type: Array,
-        select: false,
         required:[false,"Field 'token' is mandatory. Type: Array."]
     },  
     dateOfCreation: { type: Date, default: Date.now, inmutable: true },

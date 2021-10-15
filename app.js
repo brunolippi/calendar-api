@@ -89,7 +89,7 @@ async function validateAdmin (req,res,next){
         req.body.tokenData=decoded
         next()
       }
-  })} else return res.status(401).json({message: 'User is not admin or is not signed in.'})
+  })} else return res.status(401).json({message: 'User is not admin or is not signed.'})
 };
 
 app.validateAdmin = validateAdmin;

@@ -7,6 +7,7 @@ const eventModel = require("../models/eventModel");
 
 async function initReservation(res,req) {
   try{
+    if (req.body.start < new Date()) return res.status(409).json({created: false, error: 'old-date', ok: 0}) 
     const user = await usersModel.findById(req.body.owner).select('+token')
     console.log(user)
     const credentials = await tokenModel.findOne({purpose: 'calendarApiKey'})
@@ -20,7 +21,7 @@ async function initReservation(res,req) {
      verifySlot(oAuth2Client, res, req);
      
     }catch{
-      res.json("ERRUser")
+      res.json({created: false, error: 'err-user', ok: 0})
     }
 }
 
@@ -45,13 +46,13 @@ async function verifySlot(auth, res, req) {
   calendar.freebusy.query(parameters, function (err, response) {
     if (err) {
       console.log("There was an error contacting the Calendar service: " + err);
-      return res.status(500).json({created: false, error: err});
+      return res.status(500).json({created: false, error: err, ok: 0});
     }
     let eventsBooked = response.data.calendars[req.body.calendarId].busy
     if (eventsBooked.length === 0) {
       addReservation(auth, res, req)
     } else {
-      return res.status(409).json({created: false, error: 'occupied'});
+      return res.status(409).json({created: false, error: 'ocuppied', ok: 0});
     } 
   });
 }
@@ -125,19 +126,19 @@ async function addReservation(auth, res, req) {
       console.log(
         "There was an error contacting the Calendar service: " + err
       );
-      return res.status(500).json({created: false, error: err});
+      return res.status(409).json({created: false, error: err, ok: 0});
     } else {
       const eventLink = await newEvent.data.htmlLink
       const meet = await newEvent.data.hangoutLink;
       if (newEvent.data.status === 'confirmed') {
         try {
           await createReservationLog()
-          return res.json({created: true, meet, eventLink, event: newEvent.data})
+          return res.json({created: true, ok: 1, meet, eventLink, event: newEvent.data})
         }catch (err) {
-          return res.status(409).json(err)
+          return res.status(409).json({created: true, error: err, ok: 0})
       }
       };
-      return res.status(409).json({created: false, error: 'not-confirmed'});
+      return res.status(409).json({created: false, error: 'not-confirmed', ok: 0});
     }
   }
   calendar.events.insert({

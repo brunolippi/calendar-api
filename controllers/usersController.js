@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken')
 module.exports = {
   getAll: async (req, res, next) => {
     try{
-        const userData = await usersModel.find({}).populate("category");
+        const userData = await usersModel.find({}).select('-token').populate("category");
         res.json(userData);
     }catch (e){
         next(e)
@@ -13,7 +13,7 @@ module.exports = {
   },
   getById: async (req, res, next) => {
     try {
-        const userData = await usersModel.findById(req.params.id);
+        const userData = await usersModel.findById(req.params.id).select('-token');
         res.json(userData);
     }catch (e){
         next(e)

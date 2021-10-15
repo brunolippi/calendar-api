@@ -10,10 +10,12 @@ const reservationSchema = new mongoose.Schema({
     },
     owner:{
         type: ObjectId,
+        ref: 'users',
         required:[true,"Field 'owner' is mandatory. Type: ObjectId."],
     },
     eventId:{
         type: ObjectId,
+        ref: 'events',
         //required:[true,"Field 'eventId' is mandatory. Type: ObjectId."],
     },
     calendarId:{
